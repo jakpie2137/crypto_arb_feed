@@ -1,0 +1,16 @@
+# Bitkub Spot Feed Configuration
+appId: "feed_bitkub"
+enabled: false  # Disabled - enable when using THB pairs
+
+defaults:
+  orderbookStaleThresholdMs: 10000
+  reconnectBatchStreamThresholdMs: 30000
+  batchSize: 50  # Bitkub URL limit workaround
+
+# Note: Bitkub external uses THB_BTC format, internal is BTCTHB
+symbols:
+  - BTCTHB
+  - ETHTHB
+  - DOGETHB
+  # Cross - THB/USDT for FX rate
+  - USDTTHB

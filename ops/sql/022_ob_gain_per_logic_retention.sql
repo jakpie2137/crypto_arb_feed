@@ -1,0 +1,12 @@
+-- =============================================================================
+-- ob_gain_per_logic retention policy
+-- =============================================================================
+-- Tabela ob_gain_per_logic ma zawierać tylko dane z ostatniego runu populate
+-- (ostatnie 24h). TRUNCATE wykonywany jest przed każdym populate przez
+-- market-data-analyzer.
+--
+-- Limit: ~5GB. Gdy przekroczony – zmniejszyć --hours w populate.
+-- =============================================================================
+
+-- Optional: pg_stat_user_tables / pg_total_relation_size do monitorowania
+-- SELECT pg_size_pretty(pg_total_relation_size('market_data.ob_gain_per_logic'));

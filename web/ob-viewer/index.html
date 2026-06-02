@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OB Viewer — crypto_arb_feed</title>
+  <style>
+    :root {
+      --bg: #14161c;
+      --panel: #1c1e26;
+      --text: #e6e6e6;
+      --muted: #9aa0a6;
+      --bid: rgba(0, 140, 90, 0.45);
+      --ask: rgba(190, 80, 80, 0.45);
+      --pos: #8ac926;
+      --neg: #ff595e;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Consolas, monospace; background: var(--bg); color: var(--text); }
+    header { background: var(--panel); padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-bottom: 1px solid #333; }
+    label { color: var(--muted); font-size: 12px; margin-right: 4px; }
+    select, input, button { background: #111; color: var(--text); border: 1px solid #444; padding: 6px 8px; }
+    button { cursor: pointer; }
+    .gains { display: flex; gap: 16px; padding: 8px 16px; background: #101218; border-bottom: 1px solid #333; font-size: 14px; }
+    .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; height: calc(100vh - 120px); }
+    .panel { background: var(--panel); overflow: auto; padding: 8px; }
+    .panel h3 { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; line-height: 18px; }
+    .side { position: relative; padding: 1px 4px; white-space: pre; }
+    .bar { position: absolute; top: 0; bottom: 0; opacity: 0.35; z-index: 0; }
+    .bar.bid { background: var(--bid); right: 0; }
+    .bar.ask { background: var(--ask); left: 0; }
+    .side span { position: relative; z-index: 1; }
+    .pos { color: var(--pos); }
+    .neg { color: var(--neg); }
+    #perf { margin-left: auto; color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div><label>Symbol filter</label><input id="symbolFilter" size="8" /></div>
+    <div><label>Symbol</label><select id="symbol"></select></div>
+    <div><label>Source</label><select id="sourceEx"></select></div>
+    <div><label>Ref</label><select id="refEx"></select></div>
+    <div><label>Volume USD</label><input id="volume" type="number" value="5000" min="1" step="100" style="width:90px" /></div>
+    <div><label>Fees src/ref</label><span id="fees">—</span></div>
+    <button id="refreshBtn">Refresh</button>
+    <button id="refreshFrBtn">Refresh FR</button>
+    <span id="perf">ms: —</span>
+  </header>
+  <div class="gains">
+    <div id="buyGain">BUY_GAIN: n/a</div>
+    <div id="sellGain">SELL_GAIN: n/a</div>
+  </div>
+  <div class="panels">
+    <div class="panel"><h3 id="srcTitle">SOURCE</h3><div id="srcBook" class="row"></div></div>
+    <div class="panel"><h3 id="refTitle">REF</h3><div id="refBook" class="row"></div></div>
+  </div>
+  <script>
+    const API = window.OB_API_BASE || '/api';
+    let refreshMs = 100;
+    let timer = null;
+
+    async function api(path) {
+      const r = await fetch(API + path);
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    }
+
+    function fmtGain(usd, pct) {
+      if (usd == null || pct == null) return '';
+      const cls = usd >= 0 ? 'pos' : 'neg';
+      return `<span class="${cls}">${usd >= 0 ? '+' : ''}${usd.toFixed(2)} (${pct.toFixed(3)}%)</span>`;
+    }
+
+    function renderSide(levels, side) {
+      return (levels || []).map(lv => {
+        const w = Math.round((lv.heat || 0) * 100);
+        const barCls = side === 'bid' ? 'bid' : 'ask';
+        const gain = lv.gain_usd != null ? fmtGain(lv.gain_usd, lv.gain_pct) : '';
+        return `<div class="side"><div class="bar ${barCls}" style="width:${w}%"></div><span>${lv.price.toFixed(6).padStart(14)} ${lv.size.toFixed(4).padStart(10)} ${lv.volume_quote.toFixed(2).padStart(12)} ${gain}</span></div>`;
+      }).join('');
+    }
+
+    function renderBook(container, ob, isSource) {
+      if (!ob.has_data) {
+        container.innerHTML = '<div>No data</div>';
+        return;
+      }
+      const hdrBid = isSource ? 'BID price/size/vol/gain' : 'BID price/size/vol';
+      const hdrAsk = isSource ? 'ASK price/size/vol/gain' : 'ASK price/size/vol';
+      container.innerHTML = `<div><strong>${hdrBid}</strong></div><div>${renderSide(ob.bids,'bid')}</div><div style="margin-top:8px"><strong>${hdrAsk}</strong></div><div>${renderSide(ob.asks,'ask')}</div>`;
+    }
+
+    async function loadMeta() {
+      const [cfg, symbols, exchanges] = await Promise.all([
+        api('/config'), api('/symbols'), api('/exchanges')
+      ]);
+      refreshMs = cfg.refresh_interval_ms || 100;
+      document.getElementById('volume').value = cfg.default_target_volume_usd || 5000;
+      const symSel = document.getElementById('symbol');
+      symSel.innerHTML = symbols.symbols.map(s => `<option value="${s}">${s}</option>`).join('');
+      const srcSel = document.getElementById('sourceEx');
+      const refSel = document.getElementById('refEx');
+      srcSel.innerHTML = exchanges.exchanges.map(e => `<option value="${e}">${e}</option>`).join('');
+      refSel.innerHTML = exchanges.exchanges.map(e => `<option value="${e}">${e}</option>`).join('');
+      if (symbols.symbols.includes('BTCUSDT')) symSel.value = 'BTCUSDT';
+      if (exchanges.exchanges.includes('BITGET')) srcSel.value = 'BITGET';
+      if (exchanges.exchanges.includes('BINANCEFUT')) refSel.value = 'BINANCEFUT';
+    }
+
+    async function refresh() {
+      const t0 = performance.now();
+      const symbol = document.getElementById('symbol').value;
+      const source = document.getElementById('sourceEx').value;
+      const ref = document.getElementById('refEx').value;
+      const vol = document.getElementById('volume').value;
+      try {
+        const data = await api(`/compare?symbol=${encodeURIComponent(symbol)}&source_exchange=${source}&ref_exchange=${ref}&target_volume_usd=${vol}`);
+        document.getElementById('srcTitle').textContent = `SOURCE ${data.source_exchange} | ${data.symbol}`;
+        document.getElementById('refTitle').textContent = `REF ${data.ref_exchange} | ${data.symbol}`;
+        document.getElementById('fees').textContent = `${data.fee_source.toFixed(4)} / ${data.fee_ref.toFixed(4)}`;
+        renderBook(document.getElementById('srcBook'), data.source, true);
+        renderBook(document.getElementById('refBook'), data.ref, false);
+        document.getElementById('buyGain').innerHTML = 'BUY_GAIN: ' + (data.buy_gain_usd != null ? fmtGain(data.buy_gain_usd, (data.buy_gain_pct||0)*100) : 'n/a');
+        document.getElementById('sellGain').innerHTML = 'SELL_GAIN: ' + (data.sell_gain_usd != null ? fmtGain(data.sell_gain_usd, (data.sell_gain_pct||0)*100) : 'n/a');
+      } catch (e) {
+        console.error(e);
+      }
+      document.getElementById('perf').textContent = `ms: ${Math.round(performance.now()-t0)}`;
+    }
+
+    function schedule() {
+      if (timer) clearInterval(timer);
+      timer = setInterval(refresh, refreshMs);
+    }
+
+    document.getElementById('refreshBtn').onclick = refresh;
+    document.getElementById('refreshFrBtn').onclick = refresh;
+    document.getElementById('symbolFilter').oninput = (e) => {
+      const q = e.target.value.toUpperCase();
+      for (const opt of document.getElementById('symbol').options) {
+        opt.hidden = q && !opt.value.includes(q);
+      }
+    };
+    ['symbol','sourceEx','refEx','volume'].forEach(id => document.getElementById(id).onchange = refresh);
+
+    loadMeta().then(() => { refresh(); schedule(); });
+  </script>
+</body>
+</html>

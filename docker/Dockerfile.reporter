@@ -1,0 +1,78 @@
+# ============================================================
+# Reporter - Python Exchange Balance & Position Reporter
+# ============================================================
+# Usage:
+#   docker build -f docker/Dockerfile.reporter -t trading-reporter .
+#   docker run -e EXCHANGES=binance,gate trading-reporter
+# ============================================================
+
+FROM python:3.11-slim
+
+LABEL maintainer="trading-team"
+LABEL description="Reporter - Exchange Balance & Position Reporter"
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first (better caching)
+COPY analytics/reporter/requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy reporter code
+COPY analytics/reporter/ .
+
+# ============================================================
+# Environment Variables (defaults)
+# ============================================================
+
+# Exchanges to monitor (comma-separated)
+ENV EXCHANGES=gate,binance,bitget,mexc
+
+# Polling cadence (minutes)
+ENV CADENCE_MINUTES=5
+
+# Data retention (days)
+ENV PURGE_DAYS=7
+
+# Logging
+ENV LOG_LEVEL=INFO
+
+# Health check port
+ENV HEALTH_PORT=8081
+
+# PostgreSQL connection (loaded from secrets or env)
+ENV PG_HOST=postgres
+ENV PG_PORT=5432
+ENV PG_DATABASE=arb_test
+ENV PG_USER=postgres
+# PG_PASSWORD loaded from /run/secrets/pg_password or /opt/trading/secrets/pg_password.txt
+
+# Retry configuration
+ENV RETRY_TIMES=3
+ENV RETRY_DELAY_SEC=30
+
+# Writer configuration
+ENV WRITER_FLUSH_SEC=1.0
+ENV PURGE_EVERY_SEC=600
+
+# ============================================================
+# Ports
+# ============================================================
+EXPOSE 8081
+
+# ============================================================
+# Healthcheck
+# ============================================================
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:${HEALTH_PORT}/health 2>/dev/null || exit 1
+
+# ============================================================
+# Entrypoint
+# ============================================================
+CMD ["python", "-u", "main.py"]

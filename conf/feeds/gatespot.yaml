@@ -1,0 +1,38 @@
+﻿# Gate.io Spot Feed Configuration
+appId: "feed_gatespot"
+enabled: true
+
+defaults:
+  orderbookStaleThresholdMs: 10000       # 10s
+  reconnectBatchStreamThresholdMs: 30000 # 30s
+  globalSilenceTimeoutMs: 60000          # 60s - reconnect if no data for this long
+  depth: 20                              # orderbook depth
+
+# Note: Gate spot uses PAIR format with underscore (BTC_USDT)
+# SymbolRegistry maps internal (BTCUSDT) to external (BTC_USDT) automatically
+symbols:
+- BTCUSDT
+- ETHUSDT
+- SOLUSDT
+- BNBUSDT
+- XRPUSDT
+- ADAUSDT
+- DOGEUSDT
+- AVAXUSDT
+- LINKUSDT
+- DOTUSDT
+- LTCUSDT
+- BCHUSDT
+- UNIUSDT
+- ATOMUSDT
+- APTUSDT
+- ARBUSDT
+- OPUSDT
+- NEARUSDT
+- INJUSDT
+- SUIUSDT
+- FILUSDT
+- TIAUSDT
+- WIFUSDT
+- PEPEUSDT
+- MATICUSDT

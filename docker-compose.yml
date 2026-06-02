@@ -1,0 +1,341 @@
+# crypto_arb_feed — minimal stack (feeds + analytics + web viewer)
+# Usage:
+#   copy demo-config.example.json to demo-config.json and adjust
+#   echo postgres > secrets/pg_password.txt
+#   docker compose up -d --build
+#   docker compose --profile orchestrator up -d   # + Kestra
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "3"
+    compress: "true"
+
+secrets:
+  pg_password:
+    file: ./secrets/pg_password.txt
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: caf-postgres
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    environment:
+      POSTGRES_DB: arb_demo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
+    secrets:
+      - pg_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./ops/sql/018_market_data_schema.sql:/docker-entrypoint-initdb.d/01_market_data.sql:ro
+      - ./ops/sql/019_manager_symbol_schema.sql:/docker-entrypoint-initdb.d/02_manager_symbol.sql:ro
+      - ./ops/sql/030_global_rankings_and_retention.sql:/docker-entrypoint-initdb.d/03_rankings_retention.sql:ro
+    ports:
+      - "5437:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d arb_demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - caf-net
+
+  bootstrap-symbols:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python
+    image: crypto-arb-feed-python:latest
+    container_name: caf-bootstrap
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PG_HOST: postgres
+      PG_PORT: "5432"
+      PG_DB: arb_demo
+      PG_USER: postgres
+      PG_PASS_FILE: /run/secrets/pg_password
+      DISABLED_FEEDS: bitvavo,bitkub,kraken
+    secrets:
+      - pg_password
+    volumes:
+      - ./conf/feeds:/app/conf/feeds:ro
+    command: ["python", "/app/ops/scripts/bootstrap_symbols_from_feeds.py"]
+    networks:
+      - caf-net
+    restart: "no"
+
+  feed:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: crypto-arb-feed-java:latest
+    container_name: caf-feed
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+    env_file:
+      - .env.generated
+    environment:
+      APP_TYPE: feed
+      OB_GUI: "false"
+      OB_KEEP_HISTORY: "true"
+      OB_HISTORY_SAMPLE_MS: "1000"
+      HEALTH_PORT: "8080"
+      FEED_GRPC_PORT: "50050"
+      FEED_CONFIG_DIR: /app/conf/feeds
+      ARB_PG_URL: jdbc:postgresql://postgres:5432/arb_demo
+      ARB_PG_USER: postgres
+      ARB_PG_PASS_FILE: /run/secrets/pg_password
+      CROSS_FEEDS_ENABLED: "false"
+    secrets:
+      - pg_password
+    volumes:
+      - ./conf/feeds:/app/conf/feeds:ro
+    ports:
+      - "8080:8080"
+      - "50050:50050"
+    depends_on:
+      bootstrap-symbols:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+    networks:
+      - caf-net
+
+  feed-proxy:
+    image: crypto-arb-feed-java:latest
+    container_name: caf-feed-proxy
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    environment:
+      APP_TYPE: feed-proxy
+      FEED_HOST: feed
+      FEED_GRPC_PORT: "50050"
+      FEED_PROXY_GRPC_PORT: "50051"
+      FEED_PROXY_HTTP_PORT: "8080"
+      JAVA_OPTS: "-Xms128m -Xmx384m"
+    ports:
+      - "8082:8080"
+      - "50051:50051"
+    depends_on:
+      feed:
+        condition: service_healthy
+    networks:
+      - caf-net
+
+  ob-viewer-api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python
+    image: crypto-arb-feed-python:latest
+    container_name: caf-ob-viewer-api
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    env_file:
+      - .env.generated
+    environment:
+      FEED_PROXY_URL: http://feed-proxy:8080
+      PG_HOST: postgres
+      PG_PORT: "5432"
+      PG_DB: arb_demo
+      PG_USER: postgres
+      PG_PASS_FILE: /run/secrets/pg_password
+    secrets:
+      - pg_password
+    ports:
+      - "8090:8090"
+    command: ["uvicorn", "web.ob_viewer_api.main:app", "--host", "0.0.0.0", "--port", "8090"]
+    depends_on:
+      feed-proxy:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    networks:
+      - caf-net
+
+  ob-viewer-web:
+    build:
+      context: ./web/ob-viewer
+      dockerfile: Dockerfile
+    image: crypto-arb-feed-web:latest
+    container_name: caf-ob-viewer-web
+    restart: unless-stopped
+    logging: *default-logging
+    ports:
+      - "3000:80"
+    depends_on:
+      - ob-viewer-api
+    networks:
+      - caf-net
+
+  rolling-dashboard:
+    image: crypto-arb-feed-python:latest
+    container_name: caf-rolling-dashboard
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    env_file:
+      - .env.generated
+    environment:
+      PG_HOST: postgres
+      PG_PORT: "5432"
+      PG_DB: arb_demo
+      PG_USER: postgres
+      PG_PASS_FILE: /run/secrets/pg_password
+      DASH_PORT: "8050"
+    secrets:
+      - pg_password
+    command: ["python", "/app/analytics/ob_analytics/rolling_gain_dashboard.py"]
+    ports:
+      - "8050:8050"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - caf-net
+
+  ranking-dashboard:
+    image: crypto-arb-feed-python:latest
+    container_name: caf-ranking-dashboard
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    environment:
+      PG_HOST: postgres
+      PG_PORT: "5432"
+      PG_DB: arb_demo
+      PG_USER: postgres
+      PG_PASS_FILE: /run/secrets/pg_password
+      DASH_PORT: "8051"
+    secrets:
+      - pg_password
+    command: ["python", "/app/analytics/ob_analytics/global_ranking_dashboard.py"]
+    ports:
+      - "8051:8051"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - caf-net
+
+  ranking-worker:
+    image: crypto-arb-feed-python:latest
+    container_name: caf-ranking-worker
+    restart: unless-stopped
+    logging: *default-logging
+    env_file:
+      - .env.generated
+    environment:
+      PG_HOST: postgres
+      PG_PORT: "5432"
+      PG_DB: arb_demo
+      PG_USER: postgres
+      PG_PASS_FILE: /run/secrets/pg_password
+    secrets:
+      - pg_password
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          python /app/pipelines/ranking/compute_global_rankings.py || true
+          sleep $${GLOBAL_RANKING_REFRESH_SEC:-900}
+        done
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - caf-net
+
+  retention-worker:
+    image: crypto-arb-feed-python:latest
+    container_name: caf-retention-worker
+    restart: unless-stopped
+    env_file:
+      - .env.generated
+    environment:
+      PG_HOST: postgres
+      PG_PORT: "5432"
+      PG_DB: arb_demo
+      PG_USER: postgres
+      PG_PASS_FILE: /run/secrets/pg_password
+    secrets:
+      - pg_password
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          python /app/pipelines/retention/prune_db.py || true
+          sleep 300
+        done
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - caf-net
+
+  kestra:
+    image: kestra/kestra:latest
+    container_name: caf-kestra
+    restart: unless-stopped
+    profiles:
+      - orchestrator
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+    environment:
+      KESTRA_CONFIGURATION: |
+        kestra:
+          repository:
+            type: memory
+          queue:
+            type: memory
+          storage:
+            type: local
+            local:
+              base-path: /tmp/kestra-storage
+    volumes:
+      - ./pipelines/kestra:/app/flows:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8088:8080"
+    networks:
+      - caf-net
+
+networks:
+  caf-net:
+    driver: bridge
+
+volumes:
+  postgres_data:

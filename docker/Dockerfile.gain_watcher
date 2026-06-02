@@ -1,0 +1,30 @@
+# ============================================================
+# Gain Watcher - alerty o utrzymujących się gainach (Telegram)
+# ============================================================
+# Czyta orderbook_snapshots z Postgresa, wykrywa sustain, wysyła na Gains-bot.
+# Uruchom: docker compose up -d gain-watcher
+# ============================================================
+
+FROM python:3.11-slim
+
+LABEL maintainer="trading-team"
+LABEL description="Gain Watcher - sustained gain alerts to Telegram"
+
+WORKDIR /app
+
+# Copy analytics (gains_watcher + market_data_analysis + ob_analytics)
+COPY analytics/gains_watcher/ analytics/gains_watcher/
+COPY analytics/market_data_analysis/ analytics/market_data_analysis/
+COPY analytics/ob_analytics/ analytics/ob_analytics/
+COPY conf/ conf/
+
+RUN pip install --no-cache-dir -r analytics/gains_watcher/requirements.txt
+
+ENV PYTHONPATH=/app
+ENV LOG_LEVEL=INFO
+ENV PG_HOST=postgres
+ENV PG_PORT=5432
+ENV PG_DATABASE=arb_test
+ENV PG_USER=postgres
+
+CMD ["python", "-u", "-m", "analytics.gains_watcher.main"]

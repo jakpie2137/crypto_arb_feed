@@ -1,0 +1,129 @@
+syntax = "proto3";
+
+package validation;
+
+import "google/protobuf/empty.proto";
+
+option java_multiple_files = true;
+option java_package = "validation";
+option java_outer_classname = "ValidationProto";
+
+// Single leg of arbitrage (source or hedge)
+message LegOrder {
+  string exchange = 1;   // e.g. BITGET, GATEFUT
+  string symbol = 2;     // e.g. BTCUSDT
+  string side = 3;       // BUY / SELL
+  double qty = 4;
+  double price = 5;
+  double worst_price = 6;   // IOC deepest level for full fill (optional, 0 = not used)
+  bool reduce_only = 7;     // Futures: only reduce position (optional)
+}
+
+// LevelExpo ladder – gain threshold -> balance threshold (e.g. "0.0050" -> 1000)
+message LevelExpoConfig {
+  map<string, double> buy = 1;
+  map<string, double> sell = 2;
+  string type = 3;       // BASE / QUOTE
+}
+
+// Request to validate a signal (MM -> Validator -> GBS)
+message SignalRequest {
+  string cycle_id = 1;
+  string logic_id = 2;
+  LegOrder source = 3;
+  LegOrder ref = 4;
+
+  // levelExpo – base asset exposure ladder (gain -> allowed balance)
+  LevelExpoConfig level_expo = 5;
+
+  // quoteLevelExpo – QUOTE currency protection (gain -> balance threshold)
+  map<string, double> quote_level_expo = 6;
+
+  // maxPosition for reference (futures) – limit in BASE or QUOTE
+  optional double max_position = 7;
+  string max_position_type = 8;  // BASE / QUOTE
+
+  // gain – signed net profit rate from MM (fee-adjusted). Required for levelExpo/quoteLevelExpo.
+  // ONE signal = ONE gain computed in MM; GBS only compares to thresholds, does NOT recalculate.
+  optional double gain = 9;
+}
+
+// Validation result (GBS -> Validator -> MM)
+message ValidationResult {
+  bool approved = 1;
+  string reason = 2;     // Empty if approved; rejection reason if not
+}
+
+// GBS validation service
+service ValidationService {
+  rpc ValidateSignal(SignalRequest) returns (ValidationResult);
+  // Stream validation state to Validator on every change (fill push, DB refresh)
+  rpc StreamValidationState(google.protobuf.Empty) returns (stream ValidationState);
+}
+
+// Validation state snapshot – balances and positions for local validation
+message ValidationState {
+  int64 seq = 1;
+  int64 ts_ms = 2;
+  repeated ExchangeValidationState exchanges = 3;
+  // If true: GBS snapshot is older than STALE_THRESHOLD or missing - Validator MUST reject all validations
+  bool snapshot_stale = 4;
+  // Age of newest record in snapshot (ms). -1 = no data. Used for diagnostics.
+  int64 snapshot_age_ms = 5;
+}
+
+message ExchangeValidationState {
+  string exchange = 1;
+  repeated AssetBalance balances = 2;
+  repeated SymbolPosition positions = 3;
+}
+
+message AssetBalance {
+  string asset = 1;
+  string available = 2;  // decimal as string
+  string total = 3;
+}
+
+message SymbolPosition {
+  string symbol = 1;
+  string size = 2;  // decimal, negative = short
+  string size_usdt = 3;
+}
+
+// ==============================================================================
+// GBS PUSH – Router sends fill events to central GBS (real-time, no DB query)
+// ==============================================================================
+
+message SubmitSpotFillRequest {
+  string exchange = 1;
+  string base_asset = 2;
+  string quote_asset = 3;
+  string side = 4;      // BUY / SELL
+  double filled_qty = 5;
+  double filled_price = 6;
+  double fee = 7;
+  string fee_asset = 8;
+}
+
+message SubmitFuturesFillRequest {
+  string exchange = 1;
+  string symbol = 2;
+  string side = 3;      // BUY / SELL
+  double filled_contracts = 4;
+  double filled_price = 5;
+  double contract_size = 6;
+  double leverage = 7;
+  double fee = 8;
+  string fee_asset = 9;
+}
+
+message SubmitFillResponse {
+  bool ok = 1;
+  string error = 2;     // If ok=false
+}
+
+// Router pushes fills here – same data as DB write, real-time
+service GbsPushService {
+  rpc SubmitSpotFill(SubmitSpotFillRequest) returns (SubmitFillResponse);
+  rpc SubmitFuturesFill(SubmitFuturesFillRequest) returns (SubmitFillResponse);
+}

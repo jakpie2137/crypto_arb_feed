@@ -1,0 +1,32 @@
+﻿appId: feed_binancefut
+enabled: true
+defaults:
+  orderbookStaleThresholdMs: 10000
+  reconnectBatchStreamThresholdMs: 45000
+  fundingPollIntervalMs: 300000
+symbols:
+- BTCUSDT
+- ETHUSDT
+- SOLUSDT
+- BNBUSDT
+- XRPUSDT
+- ADAUSDT
+- DOGEUSDT
+- AVAXUSDT
+- LINKUSDT
+- DOTUSDT
+- LTCUSDT
+- BCHUSDT
+- UNIUSDT
+- ATOMUSDT
+- APTUSDT
+- ARBUSDT
+- OPUSDT
+- NEARUSDT
+- INJUSDT
+- SUIUSDT
+- FILUSDT
+- TIAUSDT
+- WIFUSDT
+- PEPEUSDT
+- MATICUSDT

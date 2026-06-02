@@ -1,0 +1,20 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir \
+    fastapi uvicorn[standard] httpx psycopg[binary] pyyaml \
+    pandas dash plotly pyarrow google-cloud-storage
+
+COPY analytics ./analytics
+COPY pipelines ./pipelines
+COPY ops/scripts ./ops/scripts
+COPY scripts ./scripts
+COPY web ./web
+COPY demo-config.example.json ./demo-config.example.json
+
+ENV PYTHONPATH=/app
+
+COPY docker/python_entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

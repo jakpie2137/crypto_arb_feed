@@ -1,0 +1,218 @@
+# Bitvavo Spot Feed Configuration
+# Struktura jak Bitget/Kucoin/MEXC. Na później: allowList, blocklist, API dla routera (re-check przy retry).
+#
+# Dwa tryby:
+#   Standard: BITVAVO_USE_MARKET_DATA_PRO=false (default) – REST snapshot + delty, bez auth
+#   Market Data Pro: BITVAVO_USE_MARKET_DATA_PRO=true + klucze API
+#     – non-conflated L2, ~9× więcej wiadomości, startMdSeqNo/endMdSeqNo
+#
+# Klucze dla Market Data Pro (env lub pliki):
+#   bitvavo_feed_key.txt, bitvavo_feed_secret.txt   – feed
+#   bitvavo_api_key.txt, bitvavo_api_secret.txt     – reporter
+#   bitvavo_trade_key.txt, bitvavo_trade_secret.txt – router (później)
+#   (albo BITVAVO_FEED_KEY, BITVAVO_FEED_SECRET w env)
+#
+appId: "feed_bitvavo"
+enabled: false  # Native EUR. Cross (EUR->USDT) w MM via cross1.
+
+defaults:
+  orderbookStaleThresholdMs: 10000
+  reconnectBatchStreamThresholdMs: 30000
+  batchSize: 50  # symbole per WebSocket; 200 symboli → 4 połączenia (50+50+50+50)
+
+# Symbole w formacie Bitvavo API (BTC-EUR). Mapowanie do internal (BTCEUR) przez SymbolRegistry.
+symbols:
+  - ADA-EUR
+  - HYPE-EUR
+  - LINK-EUR
+  - ESP-EUR
+  - BCH-EUR
+  - XPL-EUR
+  - SUI-EUR
+  - DOGE-EUR
+  - KITE-EUR
+  - PROMPT-EUR
+  - USDC-EUR
+  - USELESS-EUR
+  - WIF-EUR
+  - PUMP-EUR
+  - ZEUS-EUR
+  - PEPE-EUR
+  - TAO-EUR
+  - AGLD-EUR
+  - SNX-EUR
+  - WLFI-EUR
+  - ARB-EUR
+  - FARTCOIN-EUR
+  - AVAX-EUR
+  - LTC-EUR
+  - SENT-EUR
+  - HBAR-EUR
+  - WLD-EUR
+  - UNI-EUR
+  - MON-EUR
+  - BIO-EUR
+  - RENDER-EUR
+  - XLM-EUR
+  - POL-EUR
+  - SAPIEN-EUR
+  - FET-EUR
+  - SPX-EUR
+  - APT-EUR
+  - DYDX-EUR
+  - MOODENG-EUR
+  - ICP-EUR
+  - TRIA-EUR
+  - TRUMP-EUR
+  - GRASS-EUR
+  - ZRO-EUR
+  - FUN-EUR
+  - TON-EUR
+  - COW-EUR
+  - JUP-EUR
+  - EIGEN-EUR
+  - BEL-EUR
+  - MORPHO-EUR
+  - ZAMA-EUR
+  - OP-EUR
+  - NEAR-EUR
+  - LPT-EUR
+  - ENA-EUR
+  - DMC-EUR
+  - CRV-EUR
+  - DOT-EUR
+  - INJ-EUR
+  - PTB-EUR
+  - ACU-EUR
+  - TRX-EUR
+  - TNSR-EUR
+  - PENGU-EUR
+  - MERL-EUR
+  - SXT-EUR
+  - ETHFI-EUR
+  - SOMI-EUR
+  - W-EUR
+  - DRIFT-EUR
+  - JASMY-EUR
+  - ONDO-EUR
+  - BONK-EUR
+  - ZRC-EUR
+  - VIRTUAL-EUR
+  - UXLINK-EUR
+  - CHILLGUY-EUR
+  - VET-EUR
+  - AZTEC-EUR
+  - XAN-EUR
+  - XVG-EUR
+  - YGG-EUR
+  - ATOM-EUR
+  - POPCAT-EUR
+  - SEI-EUR
+  - BRETT-EUR
+  - ZK-EUR
+  - FLOKI-EUR
+  - RPL-EUR
+  - DUSK-EUR
+  - COTI-EUR
+  - LRC-EUR
+  - XDC-EUR
+  - ICNT-EUR
+  - UMA-EUR
+  - 0G-EUR
+  - ZIL-EUR
+  - MDT-EUR
+  - PARTI-EUR
+  - ALICE-EUR
+  - KAS-EUR
+  - QNT-EUR
+  - ROSE-EUR
+  - UP-EUR
+  - AAVE-EUR
+  - IO-EUR
+  - IP-EUR
+  - TIA-EUR
+  - MIOTA-EUR
+  - CFG-EUR
+  - FLOCK-EUR
+  - APE-EUR
+  - JTO-EUR
+  - VTHO-EUR
+  - S-EUR
+  - FIL-EUR
+  - PUNDIX-EUR
+  - PROM-EUR
+  - HUMA-EUR
+  - ARKM-EUR
+  - SHIB-EUR
+  - PENDLE-EUR
+  - RECALL-EUR
+  - BOB-EUR
+  - PYTH-EUR
+  - ZBT-EUR
+  - CYBER-EUR
+  - ACH-EUR
+  - ZKJ-EUR
+  - RUNE-EUR
+  - CC-EUR
+  - SQD-EUR
+  - ACT-EUR
+  - OPEN-EUR
+  - XMN-EUR
+  - GAS-EUR
+  - ORCA-EUR
+  - FIDA-EUR
+  - NPC-EUR
+  - AERO-EUR
+  - DGB-EUR
+  - SOLV-EUR
+  - ENS-EUR
+  - GALA-EUR
+  - DEEP-EUR
+  - KERNEL-EUR
+  - CHR-EUR
+  - VSN-EUR
+  - AKT-EUR
+  - ZORA-EUR
+  - SYRUP-EUR
+  - TRU-EUR
+  - GHST-EUR
+  - ARPA-EUR
+  - GLM-EUR
+  - INX-EUR
+  - MAVIA-EUR
+  - AVNT-EUR
+  - AEVO-EUR
+  - MEW-EUR
+  - KMNO-EUR
+  - EUL-EUR
+  - CHZ-EUR
+  - DEGEN-EUR
+  - WOO-EUR
+  - ZIG-EUR
+  - 2Z-EUR
+  - PORTAL-EUR
+  - IMX-EUR
+  - MET-EUR
+  - HOT-EUR
+  - BOME-EUR
+  - PHA-EUR
+  - PNUT-EUR
+  - BEAM-EUR
+  - PONKE-EUR
+  - SKY-EUR
+  - GNS-EUR
+  - CVX-EUR
+  - ALGO-EUR
+  - MOVR-EUR
+  - MOCA-EUR
+  - CSPR-EUR
+  - DBR-EUR
+  - LSK-EUR
+  - IMU-EUR
+  - DCR-EUR
+  - LMWR-EUR
+  - CTSI-EUR
+  - AXS-EUR
+  - SUPER-EUR
+  - NMR-EUR
+  - ETC-EUR

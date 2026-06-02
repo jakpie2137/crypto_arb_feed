@@ -1,0 +1,36 @@
+﻿# Bybit Futures Feed Configuration
+# Disabled to save resources; re-enable when needed. Active feeds: GATE, GATEFUT, BINANCEFUT, BITGET, KUCOIN, MEXC.
+appId: "feed_bybitfut"
+enabled: false
+
+defaults:
+  orderbookStaleThresholdMs: 20000       # 20s
+  reconnectBatchStreamThresholdMs: 60000 # 60s
+  fundingPollIntervalMs: 300000
+
+symbols:
+- BTCUSDT
+- ETHUSDT
+- SOLUSDT
+- BNBUSDT
+- XRPUSDT
+- ADAUSDT
+- DOGEUSDT
+- AVAXUSDT
+- LINKUSDT
+- DOTUSDT
+- LTCUSDT
+- BCHUSDT
+- UNIUSDT
+- ATOMUSDT
+- APTUSDT
+- ARBUSDT
+- OPUSDT
+- NEARUSDT
+- INJUSDT
+- SUIUSDT
+- FILUSDT
+- TIAUSDT
+- WIFUSDT
+- PEPEUSDT
+- MATICUSDT

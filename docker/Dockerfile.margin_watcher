@@ -1,0 +1,37 @@
+# ============================================================
+# Margin Watcher - Czujka marginowa
+# ============================================================
+# Odczytuje dane z reporter.futures_account_info, oblicza
+# MarginRatio i AvailRatio, wysyła alerty przy przekroczeniu progów.
+# ============================================================
+
+FROM python:3.11-slim
+
+LABEL maintainer="trading-team"
+LABEL description="Margin Watcher - margin alerts from reporter data"
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY analytics/margin_watcher/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY analytics/margin_watcher/ .
+
+ENV CADENCE_MINUTES=5
+ENV MARGIN_WATCHER_OFFSET_SEC=60
+ENV LOG_LEVEL=INFO
+ENV PG_HOST=postgres
+ENV PG_PORT=5432
+ENV PG_DATABASE=arb_test
+ENV PG_USER=postgres
+
+EXPOSE 8083
+
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8083/health 2>/dev/null || exit 1
+
+CMD ["python", "-u", "main.py"]

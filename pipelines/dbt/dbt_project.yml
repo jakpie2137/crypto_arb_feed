@@ -1,0 +1,14 @@
+name: crypto_arb_feed
+version: "1.0.0"
+config-version: 2
+
+profile: crypto_arb_feed
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+models:
+  crypto_arb_feed:
+    +materialized: view

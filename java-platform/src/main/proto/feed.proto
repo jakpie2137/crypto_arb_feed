@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package feed;
+
+import "google/protobuf/empty.proto";
+
+option java_multiple_files = true;
+option java_package = "feed";
+option java_outer_classname = "FeedProto";
+
+// Key for instrument (exchange + symbol)
+message InstrumentKey {
+  string exchange = 1;  // e.g. BITGET, GATEFUT
+  string symbol = 2;   // e.g. BTCUSDT
+}
+
+// Single price level
+message Level {
+  double price = 1;
+  double size = 2;
+}
+
+// Orderbook update (full snapshot)
+// Optional: funding rate (futures) – Feed polls co ~60s, dołącza przy broadcast
+message OrderbookUpdate {
+  string exchange = 1;
+  string symbol = 2;
+  int64 timestamp_ms = 3;
+  repeated Level bids = 4;
+  repeated Level asks = 5;
+  optional double funding_rate = 6;           // e.g. 0.0001
+  optional int32 funding_interval_hours = 7;   // e.g. 8
+  optional int64 next_funding_time_ms = 8;
+  optional int64 funding_source_ts_ms = 9;
+}
+
+// Subscription request - list of instruments MM wants
+message SubscriptionRequest {
+  repeated InstrumentKey instruments = 1;
+}
+
+// Feed service - Feed app streams ALL updates (for Proxy)
+service FeedService {
+  rpc StreamAllOrderbooks(google.protobuf.Empty) returns (stream OrderbookUpdate);
+}
+
+// Proxy service - Proxy streams filtered updates (for MM)
+service FeedProxyService {
+  rpc StreamOrderbooks(SubscriptionRequest) returns (stream OrderbookUpdate);
+}

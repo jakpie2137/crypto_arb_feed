@@ -1,0 +1,33 @@
+# ============================================================
+# Market Data Analysis API – FastAPI, port 8001
+# Dla dashboardu Streamlit (lokalnie) – dane z Postgresa (local lub GCP Tokyo)
+# ============================================================
+
+FROM python:3.11-slim
+
+LABEL maintainer="trading-team"
+LABEL description="Market Data Analysis API - dashboard backend"
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir \
+    fastapi>=0.100.0 \
+    uvicorn>=0.22.0 \
+    pg8000>=1.30.0 \
+    PyYAML>=6.0 \
+    requests>=2.28.0
+
+# market_data_analysis + conf (MM configs dla logics)
+COPY analytics/ analytics/
+COPY conf/ conf/
+# Run from analytics/ so market_data_analysis resolves
+WORKDIR /app/analytics
+
+ENV OB_DB_HOST=localhost
+ENV OB_DB_PORT=2137
+ENV OB_DB_NAME=arb_test
+ENV OB_DB_USER=postgres
+
+EXPOSE 8001
+
+CMD ["uvicorn", "market_data_analysis.api.main:app", "--host", "0.0.0.0", "--port", "8001"]

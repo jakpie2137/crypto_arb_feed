@@ -1,0 +1,15 @@
+# Cross / FX rate feeds (midPrice z best bid/ask)
+# Używane przez MM do przeliczania gainów gdy source/ref mają różne quote (EUR vs USDT).
+#
+# feed_forex - appId feedu, używane w LogicConfig jako cross1_feed
+
+feed_forex:
+  enabled: true
+  appId: "feed_forex"
+  symbols:
+    EURUSDT:
+      source: BINANCE
+      stream: "eurusdt@bookTicker"  # Binance spot bookTicker
+  defaults:
+    silenceReconnectMs: 60000        # reconnect gdy brak msg > 60s
+    midPriceStaleReconnectMs: 600000 # reconnect gdy mid_price bez zmiany > 10min (FX może być stabilny)

@@ -1,0 +1,32 @@
+﻿appId: feed_mexc
+enabled: true
+defaults:
+  orderbookStaleThresholdMs: 10000
+  reconnectBatchStreamThresholdMs: 30000
+  depth: 20
+symbols:
+- BTCUSDT
+- ETHUSDT
+- SOLUSDT
+- BNBUSDT
+- XRPUSDT
+- ADAUSDT
+- DOGEUSDT
+- AVAXUSDT
+- LINKUSDT
+- DOTUSDT
+- LTCUSDT
+- BCHUSDT
+- UNIUSDT
+- ATOMUSDT
+- APTUSDT
+- ARBUSDT
+- OPUSDT
+- NEARUSDT
+- INJUSDT
+- SUIUSDT
+- FILUSDT
+- TIAUSDT
+- WIFUSDT
+- PEPEUSDT
+- MATICUSDT

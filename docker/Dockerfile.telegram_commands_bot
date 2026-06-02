@@ -1,0 +1,35 @@
+# ============================================================
+# Telegram Commands Bot - margin_show, profit-sum, profit
+# ============================================================
+# Obsługuje komendy w grupach Margin-bot i PnL-bot.
+# ============================================================
+
+FROM python:3.11-slim
+
+LABEL maintainer="trading-team"
+LABEL description="Telegram Commands Bot - margin_show, profit-sum, profit"
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY analytics/telegram_commands_bot/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY analytics/telegram_commands_bot/ .
+
+ENV LOG_LEVEL=INFO
+ENV HEALTH_PORT=8086
+ENV PG_HOST=postgres
+ENV PG_PORT=5432
+ENV PG_DATABASE=arb_test
+ENV PG_USER=postgres
+
+EXPOSE 8086
+
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8086/health 2>/dev/null || exit 1
+
+CMD ["python", "-u", "main.py"]

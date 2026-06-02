@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+*.iml
+.vscode
+.cursor
+
+# Build outputs
+**/build/
+**/out/
+**/target/
+
+# Gradle cache
+.gradle/
+
+# Logs
+logs/
+*.log
+
+# Secrets (NEVER include in image!)
+secrets/
+*.secret
+*.key
+*.pem
+.env
+.env.*
+
+# Analytics (Python) - separate image if needed
+analytics/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+docs/
+*.md
+!README.md

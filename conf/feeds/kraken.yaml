@@ -1,0 +1,15 @@
+# Kraken Spot Feed Configuration
+appId: "feed_kraken"
+enabled: false  # Disabled - enable when using EUR pairs
+
+defaults:
+  orderbookStaleThresholdMs: 10000
+  reconnectBatchStreamThresholdMs: 30000
+
+# Note: Kraken uses slash separator (XBT/EUR)
+symbols:
+  - XBT/EUR
+  - ETH/EUR
+  - DOGE/EUR
+  # Cross - EUR/USD for FX rate
+  # - EUR/USD

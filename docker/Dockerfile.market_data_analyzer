@@ -1,0 +1,54 @@
+# ============================================================
+# Market Data Analyzer - OB snapshots, populate, migrate, restart
+# ============================================================
+# Subskrybuje feed-proxy (gRPC), zapisuje snapshoty do orderbook_snapshots,
+# co 12h: populate ob_gain_per_logic, query, migracja do _99, restart MM.
+# ============================================================
+
+FROM python:3.11-slim
+
+LABEL maintainer="trading-team"
+LABEL description="Market Data Analyzer - OB pipeline + config migration"
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy proto and compile
+COPY analytics/market_data_analyzer/proto/feed.proto analytics/market_data_analyzer/proto/
+RUN pip install --no-cache-dir grpcio-tools \
+    && python -m grpc_tools.protoc \
+        -I analytics/market_data_analyzer/proto \
+        --python_out=analytics/market_data_analyzer/proto \
+        --grpc_python_out=analytics/market_data_analyzer/proto \
+        analytics/market_data_analyzer/proto/feed.proto
+
+# Copy and install requirements (analyzer has all deps for populate subprocess)
+COPY analytics/market_data_analyzer/requirements.txt analytics/market_data_analyzer/
+RUN pip install --no-cache-dir -r analytics/market_data_analyzer/requirements.txt
+
+# Copy analytics (market_data_analyzer + market_data_analysis + ob_analytics for populate)
+COPY analytics/market_data_analyzer/ analytics/market_data_analyzer/
+COPY analytics/market_data_analysis/ analytics/market_data_analysis/
+COPY analytics/ob_analytics/ analytics/ob_analytics/
+COPY shared/ shared/
+COPY conf/ conf/
+
+ENV LOG_LEVEL=INFO
+ENV PG_HOST=postgres
+ENV PG_PORT=5432
+ENV PG_DATABASE=arb_test
+ENV PG_USER=postgres
+
+# Feed proxy for gRPC subscription
+ENV FEED_PROXY_URL=feed-proxy:50051
+
+EXPOSE 8092
+
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD python -c "import analytics.market_data_analyzer" 2>/dev/null || exit 1
+
+CMD ["python", "-u", "-m", "analytics.market_data_analyzer.main"]

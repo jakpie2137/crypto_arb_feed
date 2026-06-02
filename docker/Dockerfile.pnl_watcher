@@ -1,0 +1,37 @@
+# ============================================================
+# PnL Watcher - Czujka PnL
+# ============================================================
+# Odczytuje router.transaction (matched cycles), oblicza rolling PnL
+# i single-trade alerts.
+# ============================================================
+
+FROM python:3.11-slim
+
+LABEL maintainer="trading-team"
+LABEL description="PnL Watcher - PnL alerts from router transactions"
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY analytics/pnl_watcher/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY analytics/pnl_watcher/ .
+
+ENV CADENCE_MINUTES=5
+ENV PNL_WATCHER_OFFSET_SEC=120
+ENV LOG_LEVEL=INFO
+ENV PG_HOST=postgres
+ENV PG_PORT=5432
+ENV PG_DATABASE=arb_test
+ENV PG_USER=postgres
+
+EXPOSE 8085
+
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8085/health 2>/dev/null || exit 1
+
+CMD ["python", "-u", "main.py"]

@@ -1,0 +1,15 @@
+
+html, body {
+    margin: 0;
+    background-color: #1c1c1c;
+    color: white;
+    font-family: Arial, sans-serif;
+}
+.Select-control {
+    background-color: #1c1c1c !important;
+    color: white !important;
+}
+.Select-menu-outer {
+    background-color: #1c1c1c !important;
+    color: white !important;
+}

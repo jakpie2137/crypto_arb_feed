@@ -1,0 +1,50 @@
+{
+  "deployment": {
+    "mode": "local",
+    "public_read_only": false
+  },
+  "features": {
+    "save_dense_snapshots": false,
+    "save_rolled_gains": true,
+    "save_big_gain_stats": false,
+    "enable_web_ob_viewer": true
+  },
+  "retention": {
+    "dense_snapshots_minutes": 15,
+    "rolled_gains_hours": 24,
+    "big_gain_stats_hours": 24
+  },
+  "detectors": {
+    "rolling_interval_sec": 30,
+    "dense_snapshot_interval_ms": 2000,
+    "target_volume_usd": 1000,
+    "total_fees_pct": 0.0008
+  },
+  "viewer": {
+    "ob_refresh_interval_ms": 100,
+    "display_depth": 20,
+    "default_target_volume_usd": 5000
+  },
+  "dashboards": {
+    "rolling_refresh_interval_sec": 60,
+    "global_ranking_refresh_interval_sec": 900
+  },
+  "feeds": {
+    "symbol_limit": 100,
+    "disabled_feeds": ["bitvavo", "bitkub", "kraken"]
+  },
+  "cloud": {
+    "export_enabled": false,
+    "gcs_bucket": "YOUR_BUCKET",
+    "gcs_prefix": "rolled_gains/",
+    "bigquery_project": "YOUR_GCP_PROJECT",
+    "bigquery_dataset": "arb_demo",
+    "gcp_credentials_file": "/run/secrets/gcp_sa.json"
+  },
+  "postgres": {
+    "host": "postgres",
+    "port": 5432,
+    "database": "arb_demo",
+    "user": "postgres"
+  }
+}
