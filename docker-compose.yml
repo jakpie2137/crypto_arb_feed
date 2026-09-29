@@ -1,7 +1,9 @@
 # crypto_arb_feed — minimal stack (feeds + analytics + web viewer)
 # Usage:
-#   copy demo-config.example.json to demo-config.json and adjust
-#   echo postgres > secrets/pg_password.txt
+#   ./scripts/start.sh   (or scripts\start.cmd on Windows), or manually:
+#   cp demo-config.example.json demo-config.json
+#   mkdir -p secrets && echo postgres > secrets/pg_password.txt
+#   python3 scripts/render_env_from_config.py --docker-env-file .env.generated
 #   docker compose up -d --build
 #   docker compose --profile orchestrator up -d   # + Kestra
 

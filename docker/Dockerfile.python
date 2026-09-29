@@ -3,7 +3,7 @@ FROM python:3.12-slim
 WORKDIR /app
 
 RUN pip install --no-cache-dir \
-    fastapi uvicorn[standard] httpx psycopg[binary] pyyaml \
+    fastapi uvicorn[standard] httpx psycopg[binary] psycopg2-binary pyyaml \
     pandas dash plotly pyarrow google-cloud-storage
 
 COPY analytics ./analytics

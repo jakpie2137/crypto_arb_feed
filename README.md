@@ -4,19 +4,66 @@ Public demo stack: **multi-exchange WebSocket order book feeds**, **web OB viewe
 
 No market making, no executors, no reporter, **no API keys** — only public market-data WebSockets.
 
-Based on [C:/repo](../repo) (production trading platform).
+Derived from a private production trading platform repo.
 
 ---
 
 ## Quick start (Docker)
 
+Requirements: Docker with Compose v2, Python 3.9+ (standard library only, used to render the env file).
+
+### One command
+
+```bash
+./scripts/start.sh            # Linux / macOS / WSL
+```
+```bat
+scripts\start.cmd             :: Windows (cmd or PowerShell)
+```
+
+Both scripts do the steps below, skip anything that already exists, and pass extra arguments to `docker compose up` (e.g. `./scripts/start.sh --profile orchestrator`).
+
+### Step by step
+
+Linux / macOS / WSL:
+
+```bash
+cd crypto_arb_feed
+cp demo-config.example.json demo-config.json
+mkdir -p secrets && echo postgres > secrets/pg_password.txt
+python3 scripts/render_env_from_config.py --docker-env-file .env.generated
+docker compose up -d --build
+```
+
+Windows PowerShell:
+
 ```powershell
-cd C:\crypto_arb_feed
-copy demo-config.example.json demo-config.json   # owner config (gitignored)
-echo postgres> secrets\pg_password.txt
+cd crypto_arb_feed
+Copy-Item demo-config.example.json demo-config.json
+New-Item -ItemType Directory -Force secrets | Out-Null
+Set-Content -NoNewline secrets\pg_password.txt postgres
 python scripts\render_env_from_config.py --docker-env-file .env.generated
 docker compose up -d --build
 ```
+
+### Files involved
+
+| File | In git? | Created by | What it holds |
+|------|---------|------------|---------------|
+| `demo-config.example.json` | yes | — | Template with working defaults. Don't edit; copy it. |
+| `demo-config.json` | no | you (copy of the example) | Your settings: features, retention, intervals, cloud export. The defaults work locally as-is. |
+| `secrets/pg_password.txt` | no | you | Postgres password, plain text, single line. Mounted as a Docker secret into every service. |
+| `.env.generated` | no | `render_env_from_config.py` | `KEY=value` lines derived from `demo-config.json`, loaded by compose via `env_file`. Never edit by hand. |
+
+After changing `demo-config.json`, re-run the render script and `docker compose up -d` so containers pick up the new values.
+
+Notes:
+
+- The Postgres password is applied only when the `postgres_data` volume is first created. To change it later, run `docker compose down -v` (this **deletes the DB data**) or change it inside Postgres.
+- Postgres host/port/db/user are fixed in `docker-compose.yml` (`environment:` overrides `env_file`), so the `postgres` section of `demo-config.json` has no effect under Docker.
+- `DISABLED_FEEDS` for `bootstrap-symbols` is also fixed in compose; `feeds.disabled_feeds` in config does not reach it.
+- The first `--build` compiles the Java feed with Gradle and takes a few minutes. The feed healthcheck allows 120 s to start; `docker compose ps` shows when it is `healthy`.
+- Logs: `docker compose logs -f feed`. Stop: `docker compose down`.
 
 | URL | Service |
 |-----|---------|
@@ -163,7 +210,10 @@ crypto_arb_feed/
 ├── conf/feeds/          # symbol allowlists
 ├── pipelines/           # ranking, retention, export, dbt, kestra
 ├── ops/sql/             # Postgres schema
-├── demo-config.json     # gitignored
+├── scripts/             # render_env_from_config.py, start.sh, start.cmd
+├── demo-config.json     # gitignored, copy of demo-config.example.json
+├── .env.generated       # gitignored, rendered from demo-config.json
+├── secrets/             # gitignored, pg_password.txt
 └── docker-compose.yml
 ```
 

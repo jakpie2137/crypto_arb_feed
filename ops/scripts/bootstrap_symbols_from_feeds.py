@@ -102,7 +102,7 @@ def upsert(conn, exchange: str, symbol: str, external: str, base: str, quote: st
 
 
 def main() -> None:
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2]
     feeds_dir = root / "conf" / "feeds"
     disabled = set(os.environ.get("DISABLED_FEEDS", "bitvavo,bitkub,kraken").split(","))
 
@@ -116,7 +116,7 @@ def main() -> None:
 
     rows = load_feed_symbols(feeds_dir, disabled)
     if not rows:
-        print("No symbols to bootstrap", file=sys.stderr)
+        print(f"No symbols to bootstrap from {feeds_dir}", file=sys.stderr)
         sys.exit(1)
 
     conninfo = f"host={host} port={port} dbname={db} user={user} password={password}"

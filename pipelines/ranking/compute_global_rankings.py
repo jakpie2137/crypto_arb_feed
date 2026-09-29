@@ -87,10 +87,10 @@ def rank_multi_exchange_coins(cur) -> list[dict]:
             ORDER BY symbol, src_exchange, side, ts DESC
         ),
         coin_map AS (
-            SELECT symbol,
-                   COALESCE(base_curr, regexp_replace(symbol, '(USDT|USDC)$', '')) AS coin,
-                   src_exchange,
-                   MAX(avg_gain_pct_30s) AS max_gain
+            SELECT l.symbol,
+                   COALESCE(s.base_curr, regexp_replace(l.symbol, '(USDT|USDC)$', '')) AS coin,
+                   l.src_exchange,
+                   MAX(l.avg_gain_pct_30s) AS max_gain
             FROM latest l
             JOIN manager.symbol s ON s.symbol = l.symbol AND s.exchange = l.src_exchange
             GROUP BY 1, 2, 3
